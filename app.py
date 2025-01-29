@@ -30,11 +30,11 @@ def whatsapp_reply():
     # Handle normal commands
     if incoming_msg == "start":
         return send_interactive_message()
-    elif incoming_msg in ["view list", "list"]:
+   elif incoming_msg in ["1", "view list", "list"]:
         return process_user_selection("view_list", from_number)
-    elif incoming_msg in ["add item", "add"]:
+    elif incoming_msg in ["2", "add item", "add"]:
         return process_user_selection("add_item", from_number)
-    elif incoming_msg in ["clear list", "clear"]:
+    elif incoming_msg in ["3", "clear list", "clear"]:
         return process_user_selection("clear_list", from_number)
     else:
         msg.body("I didn't understand that. Send 'start' to see options.")
@@ -45,13 +45,13 @@ def send_interactive_message():
     resp = MessagingResponse()
     msg = resp.message()
     
-    msg.body("\U0001F6D2 What would you like to do?\n\n"
+    msg.body("🛒 What would you like to do?\n\n"
              "1️⃣ View List\n"
              "2️⃣ Add Item\n"
              "3️⃣ Clear List\n\n"
              "Reply with a number or command.")
 
-    return str(resp)
+    return str(resp)  # Ensure it returns TwiML format
 
 def process_user_selection(selection, user):
     """Handle user's selection"""
@@ -66,8 +66,8 @@ def process_user_selection(selection, user):
             msg.body("Your grocery list is empty. Send 'add' to add items.")
     
     elif selection == "add_item":
-        msg.body("Please type the item you'd like to add.")
-        user_states[user] = "adding_item"  # Set state to track the next message as an item
+    msg.body("Please type the item you'd like to add.")
+    user_states[user] = "adding_item"
 
     elif selection == "clear_list":
         grocery_list.clear()
@@ -77,4 +77,4 @@ def process_user_selection(selection, user):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(port=port, debug=True)
