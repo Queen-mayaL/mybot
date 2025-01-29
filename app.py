@@ -7,6 +7,10 @@ app = Flask(__name__)
 
 grocery_list = []  # Store grocery items
 
+@app.route("/")
+def home():
+    return "Your WhatsApp bot is running!"
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     """Handle incoming WhatsApp messages"""
