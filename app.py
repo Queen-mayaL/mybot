@@ -1,81 +1,60 @@
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
-import os
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///grocery.db'
+db = SQLAlchemy(app)
 
-grocery_list = []  # Store grocery items
-user_states = {}   # Track user states (e.g., adding an item)
+class GroceryItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
 
-@app.route("/")
-def home():
-    return "Your WhatsApp bot is running!"
+# Ensure database tables are created within the app context
+with app.app_context():
+    db.create_all()
 
-@app.route("/whatsapp", methods=["POST"])
-def whatsapp_reply():
-    """Handle incoming WhatsApp messages"""
-    from_number = request.values.get("From", "").strip()  # Unique user identifier
-    incoming_msg = request.values.get("Body", "").strip().lower()
-
+@app.route("/whatsapp", methods=['POST'])
+def whatsapp_bot():
+    incoming_msg = request.values.get('Body', '').strip().lower()
     resp = MessagingResponse()
     msg = resp.message()
 
-    # Check if user is in "Add Item" mode
-    if user_states.get(from_number) == "adding_item":
-        grocery_list.append(incoming_msg)  # ✅ Add the item to the list
-        user_states[from_number] = None  # Reset state
-        msg.body(f"✅ '{incoming_msg}' added to your grocery list!\n\nSend 'start' to see options again.")
-        return str(resp)
-
-    # Handle normal commands
-    if incoming_msg == "start":
-        return send_interactive_message()
-    elif incoming_msg in ["1", "view list", "list"]:
-        return process_user_selection("view_list", from_number)
-    elif incoming_msg in ["2", "add item", "add"]:
-        return process_user_selection("add_item", from_number)
-    elif incoming_msg in ["3", "clear list", "clear"]:
-        return process_user_selection("clear_list", from_number)
-    else:
-        msg.body("I didn't understand that. Send 'start' to see options.")
-        return str(resp)
-
-def send_interactive_message():
-    """Send an interactive message"""
-    resp = MessagingResponse()
-    msg = resp.message()
-    
-    msg.body("🛒 What would you like to do?\n\n"
-             "1️⃣ View List\n"
-             "2️⃣ Add Item\n"
-             "3️⃣ Clear List\n\n"
-             "Reply with a number or command.")
-
-    return str(resp)  # Ensure it returns TwiML format
-
-def process_user_selection(selection, user):
-    """Handle user's selection"""
-    resp = MessagingResponse()
-    msg = resp.message()
-
-    if selection == "view_list":
-        if grocery_list:
-            items = "\n".join(grocery_list)
-            msg.body(f"\U0001F6D2 Your Grocery List:\n{items}")
+    if incoming_msg == "show list":
+        items = GroceryItem.query.all()
+        if items:
+            item_list = '\n'.join([f"{item.id}. {item.name}" for item in items])
+            msg.body(f"Grocery List:\n{item_list}")
         else:
-            msg.body("Your grocery list is empty. Send 'add' to add items.")
-    
-    elif selection == "add_item":
-        msg.body("Please type the item you'd like to add.")
-        user_states[user] = "adding_item"
+            msg.body("Your grocery list is empty.")
 
-    elif selection == "clear_list":
-        grocery_list.clear()
-        msg.body("✅ Grocery list cleared!")
+    elif incoming_msg.startswith("add "):
+        item_name = incoming_msg[4:].strip()
+        if item_name:
+            new_item = GroceryItem(name=item_name)
+            db.session.add(new_item)
+            db.session.commit()
+            msg.body(f"Added '{item_name}' to your grocery list.")
+        else:
+            msg.body("Please specify an item to add.")
+
+    elif incoming_msg.startswith("delete "):
+        try:
+            item_id = int(incoming_msg[7:].strip())
+            item = GroceryItem.query.get(item_id)
+            if item:
+                db.session.delete(item)
+                db.session.commit()
+                msg.body(f"Deleted item '{item.name}'.")
+            else:
+                msg.body("Item not found.")
+        except ValueError:
+            msg.body("Please provide a valid item number to delete.")
+
+    else:
+        msg.body("Options:\n- Show List\n- Add <item>\n- Delete <item number>")
 
     return str(resp)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
-
+    app.run(debug=True)
