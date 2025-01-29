@@ -1,22 +1,83 @@
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
+import json
 import os
 
 app = Flask(__name__)
 
+grocery_list = []  # Store grocery items
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
-    """Respond to incoming WhatsApp messages"""
-    incoming_msg = request.values.get("Body", "").lower()
+    """Handle incoming WhatsApp messages"""
+    incoming_msg = request.values.get("Body", "").strip().lower()
+
+    if incoming_msg == "start":
+        return send_interactive_message()
+    else:
+        return process_user_selection(incoming_msg)
+
+def send_interactive_message():
+    """Send a message with interactive buttons"""
+    response = {
+        "type": "interactive",
+        "interactive": {
+            "type": "button",
+            "body": {
+                "text": "What would you like to do?"
+            },
+            "action": {
+                "buttons": [
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "view_list",
+                            "title": "📋 View List"
+                        }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "add_item",
+                            "title": "➕ Add Item"
+                        }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "clear_list",
+                            "title": "🗑️ Clear List"
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    return json.dumps(response)
+
+def process_user_selection(selection):
+    """Handle user's selection from buttons"""
     resp = MessagingResponse()
     msg = resp.message()
 
-    if "hello" in incoming_msg:
-        msg.body("Hi! How can I help you?")
-    elif "bye" in incoming_msg:
-        msg.body("Goodbye! Have a great day.")
+    if selection == "view_list":
+        if grocery_list:
+            items = "\n".join(grocery_list)
+            msg.body(f"🛒 Your Grocery List:\n{items}")
+        else:
+            msg.body("Your grocery list is empty. Send 'add' to add items.")
+    
+    elif selection == "add_item":
+        msg.body("Please type the item you'd like to add.")
+
+    elif selection == "clear_list":
+        grocery_list.clear()
+        msg.body("✅ Grocery list cleared!")
+
     else:
-        msg.body("I'm not sure how to respond to that.")
+        # If the user sends a message that is not recognized, assume it's an item
+        grocery_list.append(selection)
+        msg.body(f"Added '{selection}' to your grocery list. Send 'start' to see options again.")
 
     return str(resp)
 
