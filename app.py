@@ -1,11 +1,11 @@
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
-import json
 import os
 
 app = Flask(__name__)
 
 grocery_list = []  # Store grocery items
+user_states = {}   # Track user states (e.g., adding an item)
 
 @app.route("/")
 def home():
@@ -14,53 +14,47 @@ def home():
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     """Handle incoming WhatsApp messages"""
-    incoming_msg = request.values.get("Body", "").strip().lower()
+    from_number = request.values.get("From", "").strip()  # Unique user identifier
+    incoming_msg = request.values.get("Body", "").strip()
 
-    if incoming_msg == "start":
+    resp = MessagingResponse()
+    msg = resp.message()
+
+    # Check if user is in "Add Item" mode
+    if user_states.get(from_number) == "adding_item":
+        grocery_list.append(incoming_msg)  # ✅ Add the item to the list
+        user_states[from_number] = None  # Reset state
+        msg.body(f"✅ '{incoming_msg}' added to your grocery list!\n\nSend 'start' to see options again.")
+        return str(resp)
+
+    # Handle normal commands
+    if incoming_msg.lower() == "start":
         return send_interactive_message()
+    elif incoming_msg.lower() in ["view list", "list"]:
+        return process_user_selection("view_list", from_number)
+    elif incoming_msg.lower() in ["add item", "add"]:
+        return process_user_selection("add_item", from_number)
+    elif incoming_msg.lower() in ["clear list", "clear"]:
+        return process_user_selection("clear_list", from_number)
     else:
-        return process_user_selection(incoming_msg)
+        msg.body("I didn't understand that. Send 'start' to see options.")
+        return str(resp)
 
 def send_interactive_message():
-    """Send a message with interactive buttons"""
-    response = {
-        "type": "interactive",
-        "interactive": {
-            "type": "button",
-            "body": {
-                "text": "What would you like to do?"
-            },
-            "action": {
-                "buttons": [
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": "view_list",
-                            "title": "📋 View List"
-                        }
-                    },
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": "add_item",
-                            "title": "➕ Add Item"
-                        }
-                    },
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": "clear_list",
-                            "title": "🗑️ Clear List"
-                        }
-                    }
-                ]
-            }
-        }
-    }
-    return json.dumps(response)
+    """Send an interactive message"""
+    resp = MessagingResponse()
+    msg = resp.message()
+    
+    msg.body("🛒 What would you like to do?\n\n"
+             "1️⃣ View List\n"
+             "2️⃣ Add Item\n"
+             "3️⃣ Clear List\n\n"
+             "Reply with a number or command.")
 
-def process_user_selection(selection):
-    """Handle user's selection from buttons"""
+    return str(resp)
+
+def process_user_selection(selection, user):
+    """Handle user's selection"""
     resp = MessagingResponse()
     msg = resp.message()
 
@@ -73,15 +67,11 @@ def process_user_selection(selection):
     
     elif selection == "add_item":
         msg.body("Please type the item you'd like to add.")
+        user_states[user] = "adding_item"  # Set state to track the next message as an item
 
     elif selection == "clear_list":
         grocery_list.clear()
         msg.body("✅ Grocery list cleared!")
-
-    else:
-        # If the user sends a message that is not recognized, assume it's an item
-        grocery_list.append(selection)
-        msg.body(f"Added '{selection}' to your grocery list. Send 'start' to see options again.")
 
     return str(resp)
 
