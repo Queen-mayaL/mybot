@@ -30,7 +30,7 @@ def whatsapp_reply():
     # Handle normal commands
     if incoming_msg == "start":
         return send_interactive_message()
-   elif incoming_msg in ["1", "view list", "list"]:
+    elif incoming_msg in ["1", "view list", "list"]:
         return process_user_selection("view_list", from_number)
     elif incoming_msg in ["2", "add item", "add"]:
         return process_user_selection("add_item", from_number)
