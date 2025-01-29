@@ -66,8 +66,8 @@ def process_user_selection(selection, user):
             msg.body("Your grocery list is empty. Send 'add' to add items.")
     
     elif selection == "add_item":
-    msg.body("Please type the item you'd like to add.")
-    user_states[user] = "adding_item"
+        msg.body("Please type the item you'd like to add.")
+        user_states[user] = "adding_item"
 
     elif selection == "clear_list":
         grocery_list.clear()
