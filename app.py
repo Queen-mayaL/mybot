@@ -24,13 +24,22 @@ def whatsapp_bot():
     resp = MessagingResponse()
     msg = resp.message()
 
-    if incoming_msg == "show list":
+    if incoming_msg == "hi":
+        msg.body(
+            "📋 *Select an Option:*\n\n"
+            "✅ *Show List* - View your grocery list\n"
+            "➕ *Add* - Add an item to the list\n"
+            "❌ *Delete* - Remove an item from the list\n\n"
+            "📌 *Reply with:* `Show List`, `Add <item>`, or `Delete <item number>`."
+        )
+
+    elif incoming_msg == "show list":
         items = GroceryItem.query.all()
         if items:
-            item_list = '\n'.join([f"{item.id}. {item.name}" for item in items])
-            msg.body(f"Grocery List:\n{item_list}")
+            item_list = '\n'.join([f"🛒 {item.id}. {item.name}" for item in items])
+            msg.body(f"*Your Grocery List:*\n\n{item_list}")
         else:
-            msg.body("Your grocery list is empty.")
+            msg.body("🛒 Your grocery list is empty.")
 
     elif incoming_msg.startswith("add "):
         item_name = incoming_msg[4:].strip()
@@ -38,9 +47,9 @@ def whatsapp_bot():
             new_item = GroceryItem(name=item_name)
             db.session.add(new_item)
             db.session.commit()
-            msg.body(f"Added '{item_name}' to your grocery list.")
+            msg.body(f"✅ *Added:* '{item_name}' to your grocery list.")
         else:
-            msg.body("Please specify an item to add.")
+            msg.body("⚠️ Please specify an item to add.")
 
     elif incoming_msg.startswith("delete "):
         try:
@@ -49,14 +58,20 @@ def whatsapp_bot():
             if item:
                 db.session.delete(item)
                 db.session.commit()
-                msg.body(f"Deleted item '{item.name}'.")
+                msg.body(f"❌ *Deleted:* '{item.name}' from your list.")
             else:
-                msg.body("Item not found.")
+                msg.body("⚠️ Item not found.")
         except ValueError:
-            msg.body("Please provide a valid item number to delete.")
+            msg.body("⚠️ Please provide a valid item number to delete.")
 
     else:
-        msg.body("Options:\n- Show List\n- Add <item>\n- Delete <item number>")
+        msg.body(
+            "⚙️ *Invalid Command!*\n"
+            "📋 *Options:*\n"
+            "✅ `Show List` - View your grocery list\n"
+            "➕ `Add <item>` - Add an item\n"
+            "❌ `Delete <item number>` - Remove an item"
+        )
 
     return str(resp)
 
