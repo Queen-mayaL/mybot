@@ -14,6 +14,10 @@ class GroceryItem(db.Model):
 with app.app_context():
     db.create_all()
 
+@app.route("/")
+def home():
+    return "Twilio WhatsApp bot is running!", 200
+
 @app.route("/whatsapp", methods=['POST'])
 def whatsapp_bot():
     incoming_msg = request.values.get('Body', '').strip().lower()
