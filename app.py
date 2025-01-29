@@ -15,7 +15,7 @@ def home():
 def whatsapp_reply():
     """Handle incoming WhatsApp messages"""
     from_number = request.values.get("From", "").strip()  # Unique user identifier
-    incoming_msg = request.values.get("Body", "").strip()
+    incoming_msg = request.values.get("Body", "").strip().lower()
 
     resp = MessagingResponse()
     msg = resp.message()
@@ -28,13 +28,13 @@ def whatsapp_reply():
         return str(resp)
 
     # Handle normal commands
-    if incoming_msg.lower() == "start":
+    if incoming_msg == "start":
         return send_interactive_message()
-    elif incoming_msg.lower() in ["view list", "list"]:
+    elif incoming_msg in ["view list", "list"]:
         return process_user_selection("view_list", from_number)
-    elif incoming_msg.lower() in ["add item", "add"]:
+    elif incoming_msg in ["add item", "add"]:
         return process_user_selection("add_item", from_number)
-    elif incoming_msg.lower() in ["clear list", "clear"]:
+    elif incoming_msg in ["clear list", "clear"]:
         return process_user_selection("clear_list", from_number)
     else:
         msg.body("I didn't understand that. Send 'start' to see options.")
@@ -45,7 +45,7 @@ def send_interactive_message():
     resp = MessagingResponse()
     msg = resp.message()
     
-    msg.body("🛒 What would you like to do?\n\n"
+    msg.body("\U0001F6D2 What would you like to do?\n\n"
              "1️⃣ View List\n"
              "2️⃣ Add Item\n"
              "3️⃣ Clear List\n\n"
@@ -61,7 +61,7 @@ def process_user_selection(selection, user):
     if selection == "view_list":
         if grocery_list:
             items = "\n".join(grocery_list)
-            msg.body(f"🛒 Your Grocery List:\n{items}")
+            msg.body(f"\U0001F6D2 Your Grocery List:\n{items}")
         else:
             msg.body("Your grocery list is empty. Send 'add' to add items.")
     
